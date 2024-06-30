@@ -12,15 +12,15 @@
   <arg name="robot_namespace" default="robot"/>
   <arg name="rviz" default="true"/>
 
-  <arg name="pointcloud_topic" default="/points_raw"/>
-  <arg name="imu_topic" default="/imu_raw"/>
+  <arg name="pointcloud_topic" default="/ouster/points"/>
+  <arg name="imu_topic" default="/ouster/imu"/>
 
   <!-- DLO Odometry Node -->
   <node ns="$(arg robot_namespace)" name="dlo_odom" pkg="direct_lidar_odometry" type="dlo_odom_node" output="screen" clear_params="true">
 
     <!-- Load parameters -->
-    <rosparam file="$(find direct_lidar_odometry)/cfg/dlo.yaml" command="load"/>
-    <rosparam file="$(find direct_lidar_odometry)/cfg/params.yaml" command="load"/>
+    <rosparam file="$(find direct_lidar_odometry)/cfg/dlo_drono.yaml" command="load"/>
+    <rosparam file="$(find direct_lidar_odometry)/cfg/params_drono.yaml" command="load"/>
 
     <!-- Subscriptions -->
     <remap from="~pointcloud" to="$(arg pointcloud_topic)"/>
