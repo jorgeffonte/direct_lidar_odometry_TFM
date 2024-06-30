@@ -28,10 +28,12 @@ dlo::OdomNode::OdomNode(ros::NodeHandle node_handle) : nh(node_handle) {
   this->dlo_initialized = false;
   this->imu_calibrated = false;
 
-  this->icp_sub = this->nh.subscribe("pointcloud", 1, &dlo::OdomNode::icpCB, this);
-  this->imu_sub = this->nh.subscribe("imu", 1, &dlo::OdomNode::imuCB, this);
+  this->icp_sub = this->nh.subscribe("pointcloud", 5, &dlo::OdomNode::icpCB, this);
+  this->imu_sub = this->nh.subscribe("imu", 5, &dlo::OdomNode::imuCB, this);
 
   this->odom_pub = this->nh.advertise<nav_msgs::Odometry>("odom", 1);
+  this->odom_pub2 = this->nh.advertise<nav_msgs::Odometry>("Odometry", 1);
+  this->comp_time_pub = this->nh.advertise<std_msgs::Float64>("/comp_time", 1);
   this->pose_pub = this->nh.advertise<geometry_msgs::PoseStamped>("pose", 1);
   this->kf_pub = this->nh.advertise<nav_msgs::Odometry>("kfs", 1, true);
   this->keyframe_pub = this->nh.advertise<sensor_msgs::PointCloud2>("keyframe", 1, true);
@@ -95,7 +97,10 @@ dlo::OdomNode::OdomNode(ros::NodeHandle node_handle) : nh(node_handle) {
 
   this->convex_hull.setDimension(3);
   this->concave_hull.setDimension(3);
+ //ROS_INFO("ant  this->concave_hull.setAlpha(this->keyframe_thresh_dist_)%f",this->keyframe_thresh_dist_);
+
   this->concave_hull.setAlpha(this->keyframe_thresh_dist_);
+  //ROS_INFO("desp  this->concave_hull.setAlpha(this->keyframe_thresh_dist_)%f",this->keyframe_thresh_dist_);
   this->concave_hull.setKeepInformation(true);
 
   this->gicp_s2s.setCorrespondenceRandomness(this->gicps2s_k_correspondences_);
@@ -207,7 +212,8 @@ void dlo::OdomNode::getParams() {
   // Keyframe Threshold
   ros::param::param<double>("~dlo/odomNode/keyframe/threshD", this->keyframe_thresh_dist_, 0.1);
   ros::param::param<double>("~dlo/odomNode/keyframe/threshR", this->keyframe_thresh_rot_, 1.0);
-
+  //ROS_INFO("thres D::::::::: %f", this->keyframe_thresh_dist_ );
+  //ROS_INFO("thres R::::::::: %f", this->keyframe_thresh_rot_ );
   // Submap
   ros::param::param<int>("~dlo/odomNode/submap/keyframe/knn", this->submap_knn_, 10);
   ros::param::param<int>("~dlo/odomNode/submap/keyframe/kcv", this->submap_kcv_, 10);
@@ -326,10 +332,20 @@ void dlo::OdomNode::abortTimerCB(const ros::TimerEvent& e) {
 
 void dlo::OdomNode::publishToROS() {
   this->publishPose();
+  this->publishCompTime();
   this->publishTransform();
 }
 
+/**
+ * Publish Pose
+ **/
 
+void dlo::OdomNode::publishCompTime() {
+  std_msgs::Float64 time_msg;
+  time_msg.data = this->comp_times.back()*1000.;
+  this->comp_time_pub.publish(time_msg);
+
+}
 /**
  * Publish Pose
  **/
@@ -363,6 +379,7 @@ void dlo::OdomNode::publishPose() {
   this->odom.header.frame_id = this->odom_frame;
   this->odom.child_frame_id = this->child_frame;
   this->odom_pub.publish(this->odom);
+  this->odom_pub2.publish(this->odom);
 
   this->pose_ros.header.stamp = this->scan_stamp;
   this->pose_ros.header.frame_id = this->odom_frame;
@@ -634,6 +651,8 @@ void dlo::OdomNode::initializeDLO() {
 void dlo::OdomNode::icpCB(const sensor_msgs::PointCloud2ConstPtr& pc) {
 
   double then = ros::Time::now().toSec();
+  std::chrono::time_point<std::chrono::system_clock> start, end;
+  start = std::chrono::system_clock::now();
   this->scan_stamp = pc->header.stamp;
   this->curr_frame_stamp = pc->header.stamp.toSec();
 
@@ -689,6 +708,12 @@ void dlo::OdomNode::icpCB(const sensor_msgs::PointCloud2ConstPtr& pc) {
   this->prev_frame_stamp = this->curr_frame_stamp;
 
   // Update some statistics
+  end = std::chrono::system_clock::now();
+  std::chrono::duration<float> elapsed_seconds = end - start;
+  this->total_frame++;
+  float time_temp = elapsed_seconds.count() * 1000;
+  this->total_time+=time_temp;
+  ROS_INFO("average odom estimation time %f ms \n \n", this->total_time/this->total_frame);
   this->comp_times.push_back(ros::Time::now().toSec() - then);
 
   // Publish stuff to ROS
@@ -1117,9 +1142,12 @@ void dlo::OdomNode::updateKeyframes() {
     float delta_d = sqrt( pow(this->pose[0] - k.first.first[0], 2) + pow(this->pose[1] - k.first.first[1], 2) + pow(this->pose[2] - k.first.first[2], 2) );
 
     // count the number nearby current pose
+    //ROS_INFO("ant  if (delta_d <= this->keyframe_thresh_dist_ * 1.5)%f",this->keyframe_thresh_dist_);
+
     if (delta_d <= this->keyframe_thresh_dist_ * 1.5){
       ++num_nearby;
     }
+    //ROS_INFO("desp  if (delta_d <= this->keyframe_thresh_dist_ * 1.5)%f",this->keyframe_thresh_dist_);
 
     // store into variable
     if (delta_d < closest_d) {
@@ -1149,16 +1177,21 @@ void dlo::OdomNode::updateKeyframes() {
 
   if (abs(dd) > this->keyframe_thresh_dist_ || abs(theta_deg) > this->keyframe_thresh_rot_) {
     newKeyframe = true;
+    //ROS_INFO("  if (abs(dd) > this->keyframe_thresh_dist_ || abs(theta_deg) > this->keyframe_thresh_rot_) {");
+
   }
   if (abs(dd) <= this->keyframe_thresh_dist_) {
+    //ROS_INFO("if (abs(dd) %f <= this->keyframe_thresh_dist_)%f",dd,this->keyframe_thresh_dist_);
     newKeyframe = false;
   }
   if (abs(dd) <= this->keyframe_thresh_dist_ && abs(theta_deg) > this->keyframe_thresh_rot_ && num_nearby <= 1) {
     newKeyframe = true;
+    //ROS_INFO("if (  if (abs(dd) <= this->keyframe_thresh_dist_ && abs(theta_deg) > this->keyframe_thresh_rot_ && num_nearby <= 1) {)");
+
   }
 
   if (newKeyframe) {
-
+    //ROS_INFO("NEW KEY FRAMEEE");
     ++this->num_keyframes;
 
     // voxelization for submap
@@ -1191,6 +1224,7 @@ void dlo::OdomNode::updateKeyframes() {
  **/
 
 void dlo::OdomNode::setAdaptiveParams() {
+  // ROS_INFO("ant  setAdaptiveParams()%f",this->keyframe_thresh_dist_);
 
   // Set Keyframe Thresh from Spaciousness Metric
   if (this->metrics.spaciousness.back() > 20.0){
@@ -1205,6 +1239,7 @@ void dlo::OdomNode::setAdaptiveParams() {
 
   // set concave hull alpha
   this->concave_hull.setAlpha(this->keyframe_thresh_dist_);
+  // ROS_INFO("desp  setAdaptiveParams()%f",this->keyframe_thresh_dist_);
 
 }
 
@@ -1452,5 +1487,5 @@ void dlo::OdomNode::debug() {
   std::cout << "Cores Utilized   :: " << std::setfill(' ') << std::setw(6) << (cpu_percent/100.) * this->numProcessors << " cores // Avg: " << std::setw(5) << (avg_cpu_usage/100.) * this->numProcessors << std::endl;
   std::cout << "CPU Load         :: " << std::setfill(' ') << std::setw(6) << cpu_percent << " %     // Avg: " << std::setw(5) << avg_cpu_usage << std::endl;
   std::cout << "RAM Allocation   :: " << std::setfill(' ') << std::setw(6) << resident_set/1000. << " MB    // VSZ: " << vm_usage/1000. << " MB" << std::endl;
-
+  std::cout << "average odom estimation time " <<this->total_time/this->total_frame<< "ms" <<std::endl;
 }

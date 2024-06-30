@@ -35,6 +35,7 @@ private:
 
   void publishToROS();
   void publishPose();
+  void publishCompTime();
   void publishTransform();
   void publishKeyframe();
 
@@ -76,6 +77,9 @@ private:
   ros::Subscriber imu_sub;
 
   ros::Publisher odom_pub;
+  ros::Publisher odom_pub2;
+  ros::Publisher comp_time_pub;
+
   ros::Publisher pose_pub;
   ros::Publisher keyframe_pub;
   ros::Publisher kf_pub;
@@ -119,6 +123,10 @@ private:
   double curr_frame_stamp;
   double prev_frame_stamp;
   std::vector<double> comp_times;
+
+  double avg_comp_time;
+  double total_time =0;
+  int total_frame=0;
 
   nano_gicp::NanoGICP<PointType, PointType> gicp_s2s;
   nano_gicp::NanoGICP<PointType, PointType> gicp;

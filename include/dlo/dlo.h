@@ -47,6 +47,7 @@
 #include <sensor_msgs/Image.h>
 #include <sensor_msgs/Imu.h>
 #include <sensor_msgs/PointCloud2.h>
+#include <std_msgs/Float64.h>
 
 #include <direct_lidar_odometry/save_pcd.h>
 #include <direct_lidar_odometry/save_traj.h>
