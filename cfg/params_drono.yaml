@@ -30,7 +30,7 @@ dlo:
       voxelFilter:
         scan:
           use: true
-          res: 0.05
+          res: 0.5
         submap:
           use: true
           res: 0.05

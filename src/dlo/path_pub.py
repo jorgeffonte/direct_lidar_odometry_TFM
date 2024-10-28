@@ -9,7 +9,7 @@ class OdometryToPath:
     def __init__(self):
         rospy.init_node('odometry_to_path')
 
-        self.odom_sub = rospy.Subscriber('/robot/dlo/odom_node/odom', Odometry, self.odom_callback)
+        self.odom_sub = rospy.Subscriber('/robot/dlo_odom/Odometry', Odometry, self.odom_callback)
         self.path_pub = rospy.Publisher('/dlo/path', Path, queue_size=10)
 
         self.path = Path()

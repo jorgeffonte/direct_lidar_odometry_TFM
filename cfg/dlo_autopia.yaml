@@ -23,4 +23,4 @@ dlo:
   mapNode:
     publishFullMap: false
     publishFreq: 2.0
-    leafSize: 0.75
+    leafSize: 1

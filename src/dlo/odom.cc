@@ -276,7 +276,7 @@ void dlo::OdomNode::getParams() {
  **/
 
 void dlo::OdomNode::start() {
-  ROS_INFO("Starting DLO Odometry Node");
+  // ROS_INFO("Starting DLO Odometry Node");
 
   printf("\033[2J\033[1;1H");
   std::cout << std::endl << "==== Direct LiDAR Odometry v" << this->version_ << " ====" << std::endl << std::endl;
@@ -342,7 +342,7 @@ void dlo::OdomNode::publishToROS() {
 
 void dlo::OdomNode::publishCompTime() {
   std_msgs::Float64 time_msg;
-  time_msg.data = this->comp_times.back()*1000.;
+  time_msg.data = this->comp_times.back()*1000;
   this->comp_time_pub.publish(time_msg);
 
 }
@@ -713,8 +713,8 @@ void dlo::OdomNode::icpCB(const sensor_msgs::PointCloud2ConstPtr& pc) {
   this->total_frame++;
   float time_temp = elapsed_seconds.count() * 1000;
   this->total_time+=time_temp;
-  ROS_INFO("average odom estimation time %f ms \n \n", this->total_time/this->total_frame);
-  this->comp_times.push_back(ros::Time::now().toSec() - then);
+  // ROS_INFO("average odom estimation time %f ms \n \n", this->total_time/this->total_frame);
+  this->comp_times.push_back(time_temp/1000);
 
   // Publish stuff to ROS
   this->publish_thread = std::thread( &dlo::OdomNode::publishToROS, this );

@@ -33,11 +33,11 @@ dlo:
           res: 0.25
         submap:
           use: true
-          res: 0.5
+          res: 0.25
 
     keyframe:
-      threshD: 3
-      threshR: 20
+      threshD: 5
+      threshR: 45
 
     submap:
       keyframe:
